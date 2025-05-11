@@ -8,7 +8,7 @@ import socket
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from ipaddress import IPv4Address
-from typing import Any, Protocol, Self
+from typing import Any, ClassVar, Protocol, Self
 
 from pymodbus.framer.rtu import FramerRTU
 
@@ -27,6 +27,7 @@ class DeviceIdentification(enum.IntEnum):
     AC_ELWA_E = 0x3EFC
 
     def __repr__(self) -> str:
+        """Return a string representation of the device identification."""
         return f"{self.__class__.__name__}.{self.name}"
 
     @property
@@ -46,20 +47,22 @@ _DEVICE_NAMES = {
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class DiscoveryRequest:
-    """Discovery request."""
+    """Discovery request.
 
-    # Type   | Name
-    # u16    | crc
-    # u8[16] | name
-    # _      | reserved
+    Wire format:
+    - crc: 2 bytes
+    - name: 16 bytes
+    - reserved: 14 bytes
+    """
 
     device_id: DeviceIdentification
     """Device to scan for."""
 
+    LENGTH: ClassVar[int] = 32
+
     def encode(self) -> bytes:
         """Encode the discovery request to bytes."""
-
-        buf = bytearray(32)
+        buf = bytearray(self.LENGTH)
         buf[2:4] = self.device_id.value.to_bytes(2, "big")
         name_bytes = self.device_id.device_name.encode("ascii")
         buf[4 : 4 + len(name_bytes)] = name_bytes
@@ -71,16 +74,17 @@ class DiscoveryRequest:
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class DiscoveryReply:
-    """Discovery reply."""
+    """Discovery reply.
 
-    # Type   | Name
-    # u16    | crc
-    # u16    | identification
-    # u8[4]  | ip address
-    # u8[16] | serial number
-    # u8[2]  | firmware version
-    # u8     | elwa number
-    # _      | reserved
+    Wire format:
+    - crc: 2 bytes
+    - identification: 2 bytes
+    - ip address: 4 bytes
+    - serial number: 16 bytes
+    - firmware version: 2 bytes
+    - elwa number: 1 byte
+    - reserved: 35 bytes
+    """
 
     device_id: DeviceIdentification
     addr: IPv4Address
@@ -88,27 +92,33 @@ class DiscoveryReply:
     firmware_version: str
     elwa_number: int
 
+    LENGTH: ClassVar[int] = 64
+
     @classmethod
     def decode(cls, data: bytes) -> Self:
-        if len(data) != 64:
-            raise ValueError(
-                f"Invalid data length: {len(data)} != 64 for data: {data.hex()}"
-            )
+        """Decode a raw discovery reply body.
+
+        Raises:
+            ValueError: If the data is invalid.
+        """
+        if len(data) != cls.LENGTH:
+            msg = f"Invalid data length: {len(data)} != {cls.LENGTH} for data: {data.hex()}"
+            raise ValueError(msg)
+
         crc = int.from_bytes(data[0:2], "big")
         calculated_crc = _crc16(data[2:])
         if crc != calculated_crc:
-            raise ValueError(
-                f"Invalid CRC: {crc} != {calculated_crc} for data: {data.hex()}"
-            )
+            msg = f"Invalid CRC: {crc} != {calculated_crc} for data: {data.hex()}"
+            raise ValueError(msg)
 
-        id = int.from_bytes(data[2:4], "big")
+        dev_id = int.from_bytes(data[2:4], "big")
         ip = IPv4Address(data[4:8])
         # TODO: handle null
         serial_number = data[8:24].decode("ascii")
         firmware_version = data[24:26].decode("ascii")
         elwa_number = data[26]
         return cls(
-            device_id=DeviceIdentification(id),
+            device_id=DeviceIdentification(dev_id),
             addr=ip,
             serial_number=serial_number,
             firmware_version=firmware_version,
@@ -124,6 +134,8 @@ def _crc16(data: bytes) -> int:
 
 
 class DiscoveryCallback(Protocol):
+    """Callback for discovery replies."""
+
     def __call__(self, reply: DiscoveryReply | None) -> None:
         """Callback for discovery replies."""
 
@@ -148,7 +160,7 @@ class _Protocol(asyncio.DatagramProtocol):
         try:
             reply = DiscoveryReply.decode(data)
             _LOGGER.debug("Received discovery reply from %s: %s", addr, reply)
-        except Exception:
+        except ValueError:
             _LOGGER.debug(
                 "Failed to decode discovery reply from %s: %s",
                 addr,
@@ -165,7 +177,15 @@ async def discover_with_callback(
     callback: DiscoveryCallback,
     *,
     interface: str | None = None,
-):
+) -> AsyncIterator[None]:
+    """Discover my-PV devices on the network.
+
+    Returns:
+        A context manager which, when entered, sends a discovery request to
+        the network and listen for replies while the context is entered.
+        Any valid replies will be passed to the callback function.
+        Leaving the context will stop the discovery process and close the socket.
+    """
     loop = asyncio.get_event_loop()
     transport, _protocol = await loop.create_datagram_endpoint(
         lambda: _Protocol(callback),
@@ -182,9 +202,16 @@ async def discover_with_callback(
 
 
 async def discover(
+    *,
     interface: str | None = None,
-    timeout: float = 5.0,
+    duration: float = 5.0,
 ) -> AsyncIterator[DiscoveryReply]:
+    """Discover my-PV devices on the network.
+
+    Returns:
+        An async iterator yielding discovery replies. The iterator will stop after
+        `duration` has elapsed.
+    """
     queue: asyncio.Queue[DiscoveryReply] = asyncio.Queue()
 
     def callback(reply: DiscoveryReply | None) -> None:
@@ -194,7 +221,7 @@ async def discover(
             queue.put_nowait(reply)
 
     loop = asyncio.get_running_loop()
-    timeout_handle = loop.call_later(timeout, queue.shutdown)
+    handle = loop.call_later(duration, queue.shutdown)
 
     try:
         async with discover_with_callback(
@@ -207,14 +234,14 @@ async def discover(
                 return
             yield item
     finally:
-        timeout_handle.cancel()
+        handle.cancel()
 
 
 if __name__ == "__main__":
 
-    async def main() -> None:
+    async def _main() -> None:
         logging.basicConfig(level=logging.DEBUG)
         async for reply in discover():
-            print(reply)
+            print(reply)  # noqa: T201
 
-    asyncio.run(main())
+    asyncio.run(_main())
