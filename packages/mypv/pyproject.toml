@@ -1,7 +1,7 @@
 [project]
-name = "acthor"
+name = "mypv"
 version = "0.1.0"
-description = "AC•THOR Python library"
+description = "MYPV device communication library"
 readme = "README.md"
 authors = [{ name = "Simon Berger", email = "simon@siku2.io" }]
 requires-python = ">=3.13"

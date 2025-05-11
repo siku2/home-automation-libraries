@@ -1,1 +1,0 @@
-# AC•THOR Python library

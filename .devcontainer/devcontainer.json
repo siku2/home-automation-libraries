@@ -14,7 +14,13 @@
                 "ms-python.python",
                 "tamasfe.even-better-toml",
                 "kennylong.kubernetes-yaml-formatter"
-            ]
+            ],
+            "settings": {
+                "[python]": {
+                    "editor.defaultFormatter": "charliermarsh.ruff",
+                },
+                "python.analysis.typeCheckingMode": "strict",
+            },
         }
     }
 }
