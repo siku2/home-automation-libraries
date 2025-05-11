@@ -13,6 +13,7 @@
                 "charliermarsh.ruff",
                 "ms-python.python",
                 "tamasfe.even-better-toml",
+                "kennylong.kubernetes-yaml-formatter"
             ]
         }
     }

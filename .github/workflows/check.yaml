@@ -1,0 +1,28 @@
+# See: <https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions>
+
+name: Check
+
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+  workflow_dispatch:
+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+        - package: acthor
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: astral-sh/ruff-action@v3
+      with:
+        src: packages/${{ matrix.package }}
