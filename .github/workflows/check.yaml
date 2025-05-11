@@ -18,7 +18,7 @@ jobs:
     strategy:
       matrix:
         include:
-        - package: acthor
+        - package: mypv
 
     steps:
     - uses: actions/checkout@v4
