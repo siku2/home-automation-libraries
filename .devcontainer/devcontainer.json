@@ -1,0 +1,19 @@
+{
+    "name": "Python 3",
+    "build": {
+        "dockerfile": "Dockerfile",
+    },
+    "runArgs": [
+        "--network=host",
+    ],
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "astral-sh.ty",
+                "charliermarsh.ruff",
+                "ms-python.python",
+                "tamasfe.even-better-toml",
+            ]
+        }
+    }
+}
