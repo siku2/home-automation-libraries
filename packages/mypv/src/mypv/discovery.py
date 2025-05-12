@@ -4,10 +4,9 @@ import asyncio
 import dataclasses
 import enum
 import logging
-import socket
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from ipaddress import IPv4Address
+from ipaddress import IPv4Address, IPv4Interface, IPv6Interface
 from typing import Any, ClassVar, Protocol, Self
 
 from pymodbus.framer.rtu import FramerRTU
@@ -68,7 +67,7 @@ class DiscoveryRequest:
         buf[4 : 4 + len(name_bytes)] = name_bytes
 
         crc = _crc16(buf[2:])
-        buf[0:2] = crc.to_bytes(2, "big")
+        buf[0:2] = crc.to_bytes(2, "little")
         return bytes(buf)
 
 
@@ -105,7 +104,7 @@ class DiscoveryReply:
             msg = f"Invalid data length: {len(data)} != {cls.LENGTH} for data: {data.hex()}"
             raise ValueError(msg)
 
-        crc = int.from_bytes(data[0:2], "big")
+        crc = int.from_bytes(data[0:2], "little")
         calculated_crc = _crc16(data[2:])
         if crc != calculated_crc:
             msg = f"Invalid CRC: {crc} != {calculated_crc} for data: {data.hex()}"
@@ -113,9 +112,8 @@ class DiscoveryReply:
 
         dev_id = int.from_bytes(data[2:4], "big")
         ip = IPv4Address(data[4:8])
-        # TODO: handle null
-        serial_number = data[8:24].decode("ascii")
-        firmware_version = data[24:26].decode("ascii")
+        serial_number = data[8:24].decode("ascii").rstrip("\x00")
+        firmware_version = data[24:26].hex()
         elwa_number = data[26]
         return cls(
             device_id=DeviceIdentification(dev_id),
@@ -141,15 +139,19 @@ class DiscoveryCallback(Protocol):
 
 
 class _Protocol(asyncio.DatagramProtocol):
-    def __init__(self, callback: DiscoveryCallback) -> None:
+    def __init__(
+        self, interface: IPv4Interface | IPv6Interface, callback: DiscoveryCallback
+    ) -> None:
+        self._interface = interface
         self._callback = callback
 
     def connection_made(self, transport: asyncio.DatagramTransport) -> None:
         req = DiscoveryRequest(
             device_id=DeviceIdentification.AC_THOR,
         )
-        _LOGGER.debug("Sending discovery request: %s", req)
-        transport.sendto(req.encode(), ("255.255.255.255", _DISCOVERY_PORT))
+        addr = (str(self._interface.network.broadcast_address), _DISCOVERY_PORT)
+        _LOGGER.debug("Sending discovery request to %s: %s", addr, req)
+        transport.sendto(req.encode(), addr)
 
     def connection_lost(self, exc: Exception | None) -> None:
         _LOGGER.debug("Connection lost: %s", exc)
@@ -157,6 +159,9 @@ class _Protocol(asyncio.DatagramProtocol):
         self._callback(None)
 
     def datagram_received(self, data: bytes, addr: tuple[str | Any, int]) -> None:
+        if len(data) == DiscoveryRequest.LENGTH:
+            # Ignore requests
+            return
         try:
             reply = DiscoveryReply.decode(data)
             _LOGGER.debug("Received discovery reply from %s: %s", addr, reply)
@@ -164,19 +169,22 @@ class _Protocol(asyncio.DatagramProtocol):
             _LOGGER.debug(
                 "Failed to decode discovery reply from %s: %s",
                 addr,
-                data,
+                data.hex(),
                 exc_info=True,
             )
             return
 
         self._callback(reply)
 
+    def error_received(self, exc: Exception) -> None:
+        _LOGGER.debug("Error received: %s", exc)
+
 
 @asynccontextmanager
 async def discover_with_callback(
     callback: DiscoveryCallback,
     *,
-    interface: str | None = None,
+    interface: IPv4Interface | IPv6Interface | None = None,
 ) -> AsyncIterator[None]:
     """Discover my-PV devices on the network.
 
@@ -186,13 +194,13 @@ async def discover_with_callback(
         Any valid replies will be passed to the callback function.
         Leaving the context will stop the discovery process and close the socket.
     """
+    if interface is None:
+        interface = IPv4Interface("0.0.0.0/0")
     loop = asyncio.get_event_loop()
     transport, _protocol = await loop.create_datagram_endpoint(
-        lambda: _Protocol(callback),
-        family=socket.AF_INET,
-        proto=socket.IPPROTO_UDP,
+        lambda: _Protocol(interface, callback),
         allow_broadcast=True,
-        local_addr=(interface, 0) if interface else None,
+        local_addr=(str(interface.ip), _DISCOVERY_PORT),
     )
 
     try:
@@ -203,7 +211,7 @@ async def discover_with_callback(
 
 async def discover(
     *,
-    interface: str | None = None,
+    interface: IPv4Interface | IPv6Interface | None = None,
     duration: float = 5.0,
 ) -> AsyncIterator[DiscoveryReply]:
     """Discover my-PV devices on the network.
@@ -228,11 +236,12 @@ async def discover(
             callback,
             interface=interface,
         ):
-            try:
-                item = await queue.get()
-            except asyncio.QueueShutDown:
-                return
-            yield item
+            while True:
+                try:
+                    item = await queue.get()
+                except asyncio.QueueShutDown:
+                    break
+                yield item
     finally:
         handle.cancel()
 

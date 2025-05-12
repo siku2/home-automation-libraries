@@ -11,9 +11,11 @@
             "extensions": [
                 "astral-sh.ty",
                 "charliermarsh.ruff",
+                "foxundermoon.shell-format",
+                "kennylong.kubernetes-yaml-formatter",
                 "ms-python.python",
                 "tamasfe.even-better-toml",
-                "kennylong.kubernetes-yaml-formatter"
+                "timonwong.shellcheck",
             ],
             "settings": {
                 "[python]": {
