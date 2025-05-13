@@ -1,4 +1,16 @@
-"""Discover my-PV devices on the network."""
+"""Discover my-PV devices on the network.
+
+Example::
+
+    import asyncio
+    import mypv.discovery
+
+    async def main() -> None:
+        async for reply in mypv.discovery.discover():
+            print(f"Found device: {reply}")
+
+    asyncio.run(main())
+"""
 
 import asyncio
 import dataclasses
@@ -50,6 +62,7 @@ class DiscoveryRequest:
 
     Wire format:
     - crc: 2 bytes
+    - identification: 2 bytes
     - name: 16 bytes
     - reserved: 14 bytes
     """
@@ -69,6 +82,26 @@ class DiscoveryRequest:
         crc = _crc16(buf[2:])
         buf[0:2] = crc.to_bytes(2, "little")
         return bytes(buf)
+
+    @classmethod
+    def decode(cls, data: bytes) -> Self:
+        """Decode a raw discovery request body.
+
+        Raises:
+            ValueError: If the data is invalid.
+        """
+        if len(data) != cls.LENGTH:
+            msg = f"Invalid data length: {len(data)} != {cls.LENGTH} for data: {data.hex()}"
+            raise ValueError(msg)
+
+        crc = int.from_bytes(data[0:2], "little")
+        calculated_crc = _crc16(data[2:])
+        if crc != calculated_crc:
+            msg = f"Invalid CRC: {crc} != {calculated_crc} for data: {data.hex()}"
+            raise ValueError(msg)
+
+        dev_id = int.from_bytes(data[2:4], "big")
+        return cls(device_id=DeviceIdentification(dev_id))
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
@@ -92,6 +125,18 @@ class DiscoveryReply:
     elwa_number: int
 
     LENGTH: ClassVar[int] = 64
+
+    def encode(self) -> bytes:
+        """Encode the discovery reply to bytes."""
+        buf = bytearray(self.LENGTH)
+        buf[2:4] = self.device_id.value.to_bytes(2, "big")
+        buf[4:8] = self.addr.packed
+        buf[8:24] = self.serial_number.encode("ascii").ljust(16, b"\x00")
+        buf[24:26] = bytes.fromhex(self.firmware_version)
+        buf[26] = self.elwa_number
+        crc = _crc16(buf[2:])
+        buf[0:2] = crc.to_bytes(2, "little")
+        return bytes(buf)
 
     @classmethod
     def decode(cls, data: bytes) -> Self:
@@ -154,7 +199,8 @@ class _Protocol(asyncio.DatagramProtocol):
         transport.sendto(req.encode(), addr)
 
     def connection_lost(self, exc: Exception | None) -> None:
-        _LOGGER.debug("Connection lost: %s", exc)
+        if exc is not None:
+            _LOGGER.debug("Connection lost: %s", exc)
         # TODO: do we need to ensure this is never called twice?
         self._callback(None)
 
@@ -178,6 +224,7 @@ class _Protocol(asyncio.DatagramProtocol):
 
     def error_received(self, exc: Exception) -> None:
         _LOGGER.debug("Error received: %s", exc)
+        self._callback(None)
 
 
 @asynccontextmanager
@@ -189,10 +236,10 @@ async def discover_with_callback(
     """Discover my-PV devices on the network.
 
     Returns:
-        A context manager which, when entered, sends a discovery request to
-        the network and listen for replies while the context is entered.
+        A context manager, which, when entered, sends a discovery request to
+        the network and listens for replies.
         Any valid replies will be passed to the callback function.
-        Leaving the context will stop the discovery process and close the socket.
+        Leaving the context will stop the listener and close the socket.
     """
     if interface is None:
         interface = IPv4Interface("0.0.0.0/0")
@@ -244,13 +291,3 @@ async def discover(
                 yield item
     finally:
         handle.cancel()
-
-
-if __name__ == "__main__":
-
-    async def _main() -> None:
-        logging.basicConfig(level=logging.DEBUG)
-        async for reply in discover():
-            print(reply)  # noqa: T201
-
-    asyncio.run(_main())
