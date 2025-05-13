@@ -11,6 +11,7 @@
             "extensions": [
                 "astral-sh.ty",
                 "charliermarsh.ruff",
+                "DavidAnson.vscode-markdownlint",
                 "foxundermoon.shell-format",
                 "kennylong.kubernetes-yaml-formatter",
                 "ms-python.python",
