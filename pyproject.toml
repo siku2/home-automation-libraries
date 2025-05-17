@@ -60,9 +60,10 @@ ignore = ["COM812"]
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**" = [
     "D1",      # docstrings are not required in tests
+    "FBT001",  # boolean parameters
+    "PLR0915", # too many statements
     "PLR2004", # magic numbers are fine in tests
     "S101",    # asserts are fine in tests
-    "FBT001",  # boolean parameters
 ]
 
 
