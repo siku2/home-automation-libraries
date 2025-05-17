@@ -1,15 +1,14 @@
 """Discover my-PV devices on the network.
 
-Example::
-
-    import asyncio
-    import mypv.discovery
-
-    async def main() -> None:
-        async for reply in mypv.discovery.discover():
-            print(f"Found device: {reply}")
-
-    asyncio.run(main())
+Examples:
+    >>> import asyncio
+    >>> import mypv.discovery
+    >>>
+    >>> async def main() -> None:
+    >>>     async for reply in mypv.discovery.discover():
+    >>>         print(f"Found device: {reply}")
+    >>>
+    >>> asyncio.run(main())
 """
 
 import asyncio
@@ -87,16 +86,21 @@ class DeviceType(enum.StrEnum):
         """
         return cls(sn[:6])
 
+    @property
+    def is_acthor_9s(self) -> bool:
+        """Whether the device is an AC-THOR 9S."""
+        return self == self.ACTHOR_9S
+
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class DiscoveryRequest:
     """Discovery request.
 
     Wire format:
-    - crc: 2 bytes
-    - identification: 2 bytes
-    - name: 16 bytes
-    - reserved: 14 bytes
+        - crc: 2 bytes
+        - identification: 2 bytes
+        - name: 16 bytes
+        - reserved: 14 bytes
     """
 
     device_id: DeviceIdentification
@@ -111,7 +115,7 @@ class DiscoveryRequest:
         name_bytes = self.device_id.device_name.encode("ascii")
         buf[4 : 4 + len(name_bytes)] = name_bytes
 
-        crc = _crc16(buf[2:])
+        crc = _crc16(bytes(buf[2:]))
         buf[0:2] = crc.to_bytes(2, "little")
         return bytes(buf)
 
@@ -141,13 +145,13 @@ class DiscoveryReply:
     """Discovery reply.
 
     Wire format:
-    - crc: 2 bytes
-    - identification: 2 bytes
-    - ip address: 4 bytes
-    - serial number: 16 bytes
-    - firmware version: 2 bytes
-    - elwa number: 1 byte
-    - reserved: 35 bytes
+        - crc: 2 bytes
+        - identification: 2 bytes
+        - ip address: 4 bytes
+        - serial number: 16 bytes
+        - firmware version: 2 bytes
+        - elwa number: 1 byte
+        - reserved: 35 bytes
     """
 
     device_id: DeviceIdentification
@@ -174,7 +178,7 @@ class DiscoveryReply:
         buf[8:24] = self.serial_number.encode("ascii").ljust(16, b"\x00")
         buf[24:26] = self.firmware_version.to_bytes(2, "big")
         buf[26] = self.elwa_number
-        crc = _crc16(buf[2:])
+        crc = _crc16(bytes(buf[2:]))
         buf[0:2] = crc.to_bytes(2, "little")
         return bytes(buf)
 

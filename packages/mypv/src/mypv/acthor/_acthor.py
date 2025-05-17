@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Literal, Self
 
 from pymodbus.client import AsyncModbusTcpClient
 
-from ._quirks import Quirks
+from ._features import DeviceFeatures
 from ._registers import REG_HOT_WATER_MAP, REG_POWER, REG_POWER_32_HIGH, Registers
 
 if TYPE_CHECKING:
@@ -18,22 +18,24 @@ class Acthor:
     __slots__ = (
         "_client",
         "_device_id",
+        "_features",
         "_last_update",
-        "_quirks",
         "_registers",
     )
 
-    def __init__(self, client: "ModbusBaseClient", *, quirks: Quirks, device_id: int = 1) -> None:
+    def __init__(
+        self, client: "ModbusBaseClient", *, features: DeviceFeatures, device_id: int = 1
+    ) -> None:
         """Create a new Acthor instance.
 
         Only use this constructor if you know what you're doing.
         Prefer using the `connect` class method.
         """
         self._client = client
-        self._quirks = quirks
+        self._features = features
         self._device_id = device_id
         self._last_update: datetime | None = None
-        self._registers = Registers()
+        self._registers = Registers(features)
 
     @classmethod
     async def connect(cls, host: Host, *, device_id: int = 1, port: int = 502) -> Self:
@@ -44,8 +46,8 @@ class Acthor:
             name="acthor",
         )
         await client.connect()
-        quirks = await Quirks.read(client, device_id=device_id)
-        acthor = cls(client, quirks=quirks, device_id=device_id)
+        features = await DeviceFeatures.read(client, device_id=device_id)
+        acthor = cls(client, features=features, device_id=device_id)
         await acthor.update_registers()
         return acthor
 
@@ -61,13 +63,18 @@ class Acthor:
         self._client.close()
 
     @property
+    def features(self) -> DeviceFeatures:
+        """Device features."""
+        return self._features
+
+    @property
     def registers(self) -> Registers:
         """Register values."""
         return self._registers
 
     async def update_registers(self) -> None:
         """Updates the register values."""
-        read_count = self._quirks.register_count
+        read_count = self._features.readable_registers
         pdu = await self._client.read_holding_registers(
             self._registers.RANGE.start,
             count=read_count,
@@ -103,9 +110,9 @@ class Acthor:
         *,
         min_temp: float | None,
         max_temp: float | None,
-        index: Literal[1, 2, 3] = 1,
+        unit: Literal[1, 2, 3] = 1,
     ) -> None:
-        """Set the hot water temperature range.
+        """Set the "hot water" temperature range.
 
         Temperature values are in degrees Celsius, with one decimal place.
         `None` values will not be written to the device and instead left at their current value.
@@ -116,7 +123,7 @@ class Acthor:
         This function should not be called more than once per day to protect the lifespan of the
         non-volatile memory.
         """
-        min_reg, max_reg = REG_HOT_WATER_MAP[index]
+        min_reg, max_reg = REG_HOT_WATER_MAP[unit]
         for reg, value in ((max_reg, max_temp), (min_reg, min_temp)):
             if value is None:
                 continue

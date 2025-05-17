@@ -1,13 +1,19 @@
 import dataclasses
 import enum
 from datetime import time, timedelta, timezone
-from typing import Any, ClassVar, overload
+from typing import TYPE_CHECKING, Any, ClassVar, overload
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from ._features import DeviceFeatures
 
 REG_CONTROL_FW_VERSION = 1016
 REG_CONTROL_FW_SUB_VERSION = 1028
+REG_SERIAL_NUMBER_RANGE = slice(1018, 1025 + 1)
 
 REG_HOT_WATER_MAP = {
-    # index -> (min_temp, max_temp)
+    # unit -> (min_temp, max_temp)
     1: (1006, 1002),
     2: (1039, 1037),
     3: (1040, 1038),
@@ -24,16 +30,41 @@ class Registers:
     These registers can still be read, but will return 0 unless otherwise specified.
     """
 
-    __slots__ = ("_values",)
+    __slots__ = (
+        "_features",
+        "_values",
+    )
 
     RANGE: "ClassVar[slice[int, int, None]]" = slice(1000, 1088 + 1)
     """The range of registers that are available."""
 
-    def __init__(self) -> None:
+    def __init__(self, features: "DeviceFeatures") -> None:
         self._values = [0] * (self.RANGE.stop - self.RANGE.start)
+        self._features = features
+
+    def has_register(self, register: property) -> bool:
+        """Check if the register is available on this device.
+
+        Examples:
+            >>> registers = Registers(DeviceFeatures.all())
+            >>> registers.has_register(Registers.meter_power_32)
+            True
+        """
+        try:
+            f = _REGISTER_CHECKS[register]
+        except KeyError:
+            if register not in self.__class__.__dict__.values():
+                msg = f"Register {register.__name__} ({register}) is not a valid register."
+                raise ValueError(msg) from None
+            return True
+        else:
+            return f(self._features)
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert registers to a dictionary."""
+        """Convert registers to a dictionary.
+
+        This will only include registers available on the device.
+        """
 
         def v(x: Any) -> Any:  # noqa: ANN401
             if hasattr(x, "to_dict") and callable(x.to_dict):
@@ -43,7 +74,7 @@ class Registers:
         return {
             key: v(prop.__get__(self))
             for key, prop in self.__class__.__dict__.items()
-            if isinstance(prop, property)
+            if isinstance(prop, property) and self.has_register(prop)
         }
 
     def __len__(self) -> int:
@@ -165,12 +196,17 @@ class Registers:
 
     @property
     def temperatures(self) -> list[float]:
-        """Temperatures 1-8 in °C.
+        """Temperatures of the available sensors in °C.
 
-        Temperatures 5-8 are marked as "not available" in the data sheet, but are included here for
-        completeness.
+        Only the available temperature sensors will be returned as determined by the device
+        features.
+        As such, the length of the list may vary by device, but will remain stable for each
+        subsequent call.
+        Note that this doesn't take into account whether a temperature sensor is actually connected.
+        It's only about what the hardware supports.
         """
         registers = [self._values[1], *self._values[30:37]]
+        registers = registers[: self._features.temperature_sensors]
         return [reg / 10 for reg in registers]
 
     @property
@@ -320,7 +356,7 @@ class Registers:
     @property
     def serial_number(self) -> str:
         """Serial number."""
-        return b"".join(reg.to_bytes(2, "little") for reg in self._values[18:26]).decode("ascii")
+        return b"".join(reg.to_bytes(2, "big") for reg in self._values[18:26]).decode("ascii")
 
     @property
     def legionella(self) -> "LegionellaSettings":
@@ -462,6 +498,21 @@ class Registers:
         Only available after firmware version `a0020500`.
         """
         return self._values[85]
+
+
+_REGISTER_CHECKS: "dict[property, Callable[[DeviceFeatures], bool]]" = {
+    Registers.hot_water_2_temperature_range: lambda f: f.water_heating_units >= 2,  # noqa: PLR2004
+    Registers.hot_water_3_temperature_range: lambda f: f.water_heating_units >= 3,  # noqa: PLR2004
+    Registers.max_power_abs: lambda f: f.has_max_power_abs,
+    Registers.output_powers: lambda f: f.has_power_outputs,
+    Registers.power_with_relays: lambda f: f.has_power_with_relays,
+    Registers.device_state: lambda f: f.readable_registers >= 82,  # noqa: PLR2004
+    Registers.device_power_total: lambda f: f.has_device_powers,
+    Registers.device_power_solar: lambda f: f.has_device_powers,
+    Registers.device_power_grid: lambda f: f.has_device_powers,
+    Registers.pwm_out: lambda f: f.has_pwm_out,
+    Registers.meter_power_32: lambda f: f.has_meter_power_32,
+}
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True)
@@ -660,7 +711,7 @@ class OperationState(enum.IntEnum):
     """This state is unknown as it is not documented in the data sheet."""
 
 
-@dataclasses.dataclass(kw_only=True, frozen=True)
+@dataclasses.dataclass(frozen=True, order=True)
 class ControlFirmwareVersion:
     version: int
     sub_version: int
