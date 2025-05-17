@@ -18,7 +18,7 @@ from mypv.discovery import DeviceIdentification, DiscoveryReply, DiscoveryReques
                 device_id=DeviceIdentification.AC_THOR,
                 addr=IPv4Address("127.0.0.1"),
                 serial_number="hello",
-                firmware_version="000a",
+                firmware_version=10,
                 elwa_number=1,
             ),
             "75764e847f00000168656c6c6f0000000000000000000000000a01",
