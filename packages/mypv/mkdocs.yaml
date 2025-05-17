@@ -1,0 +1,29 @@
+# See: <https://www.mkdocs.org/user-guide/configuration/>
+
+site_name: MyPV
+site_url: !ENV READTHEDOCS_CANONICAL_URL
+
+repo_url: !ENV READTHEDOCS_GIT_CLONE_URL
+
+theme:
+  name: material
+  custom_dir: ../../docs/overrides
+
+plugins:
+- mkdocstrings:
+    handlers:
+      # See: <https://mkdocstrings.github.io/python/usage/>
+      python:
+        load_external_modules: true
+        paths:
+        - src
+        options:
+          show_overloads: true
+          show_signature_annotations: true
+          signature_crossrefs: true
+  # See: <https://github.com/tlambert03/mkdocs-api-autonav?tab=readme-ov-file#configuration>
+- api-autonav:
+    modules: [ "src/mypv" ]
+
+extra_javascript:
+- ../../docs/js/readthedocs.js
