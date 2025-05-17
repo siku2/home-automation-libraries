@@ -17,4 +17,4 @@ build:
     python: "3.12"
 
 mkdocs:
-  configuration: mkdocs.yaml
+  configuration: packages/mypv/mkdocs.yaml
