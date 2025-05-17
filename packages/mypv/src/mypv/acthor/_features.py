@@ -13,7 +13,10 @@ from ._registers import (
 )
 
 if TYPE_CHECKING:
-    from pymodbus.client import ModbusBaseClient
+    from collections.abc import Awaitable
+
+    from pymodbus.client.mixin import ModbusClientMixin
+    from pymodbus.pdu import ModbusPDU
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -72,7 +75,7 @@ class DeviceFeatures:
         )
 
     @classmethod
-    async def read(cls, client: "ModbusBaseClient", device_id: int) -> Self:
+    async def read(cls, client: "ModbusClientMixin[Awaitable[ModbusPDU]]", device_id: int) -> Self:
         """Determine the available device features for the given device."""
         _LOGGER.debug("Reading registers to identify device features (device_id=%d)", device_id)
         # The range we're reading contains the following registers:

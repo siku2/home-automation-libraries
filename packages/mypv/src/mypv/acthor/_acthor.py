@@ -3,18 +3,28 @@ from ipaddress import IPv4Address, IPv6Address
 from types import TracebackType
 from typing import TYPE_CHECKING, Literal, Self
 
-from pymodbus.client import AsyncModbusTcpClient
+from pymodbus.client import AsyncModbusTcpClient, ModbusBaseClient
 
 from ._features import DeviceFeatures
 from ._registers import REG_HOT_WATER_MAP, REG_POWER, REG_POWER_32_HIGH, Registers
 
 if TYPE_CHECKING:
-    from pymodbus.client import ModbusBaseClient
+    from collections.abc import Awaitable
+
+    from pymodbus.client.mixin import ModbusClientMixin
+    from pymodbus.pdu import ModbusPDU
+
 
 type Host = str | IPv4Address | IPv6Address
 
 
 class Acthor:
+    """AC-THOR device client.
+
+    The underlying modbus client is not concurrent-safe, so neither is this class.
+    In practice this means you shouldn't run multiple methods at the same time.
+    """
+
     __slots__ = (
         "_client",
         "_device_id",
@@ -24,7 +34,11 @@ class Acthor:
     )
 
     def __init__(
-        self, client: "ModbusBaseClient", *, features: DeviceFeatures, device_id: int = 1
+        self,
+        client: "ModbusClientMixin[Awaitable[ModbusPDU]]",
+        *,
+        features: DeviceFeatures,
+        device_id: int = 1,
     ) -> None:
         """Create a new Acthor instance.
 
@@ -38,6 +52,25 @@ class Acthor:
         self._registers = Registers(features)
 
     @classmethod
+    async def from_modbus(
+        cls, client: "ModbusClientMixin[Awaitable[ModbusPDU]]", device_id: int = 1
+    ) -> Self:
+        """Connect to a device with an existing modbus client.
+
+        This class takes ownership of the client and will close it when done.
+        You should not use the client after this call.
+        """
+        try:
+            features = await DeviceFeatures.read(client, device_id=device_id)
+            acthor = cls(client, features=features, device_id=device_id)
+            await acthor.update_registers()
+        except:
+            if isinstance(client, ModbusBaseClient):
+                client.close()
+            raise
+        return acthor
+
+    @classmethod
     async def connect(cls, host: Host, *, device_id: int = 1, port: int = 502) -> Self:
         """Connect to a device."""
         client = AsyncModbusTcpClient(
@@ -46,10 +79,7 @@ class Acthor:
             name="acthor",
         )
         await client.connect()
-        features = await DeviceFeatures.read(client, device_id=device_id)
-        acthor = cls(client, features=features, device_id=device_id)
-        await acthor.update_registers()
-        return acthor
+        return await cls.from_modbus(client, device_id=device_id)
 
     async def __aenter__(self) -> Self:
         return self
@@ -60,7 +90,8 @@ class Acthor:
         exc_value: BaseException | None,
         traceback: TracebackType | None,
     ) -> None:
-        self._client.close()
+        if isinstance(self._client, ModbusBaseClient):
+            self._client.close()
 
     @property
     def features(self) -> DeviceFeatures:

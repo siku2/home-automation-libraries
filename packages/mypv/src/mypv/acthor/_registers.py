@@ -599,6 +599,8 @@ class StatusCodeCategory(enum.IntEnum):
 
 
 class StatusCode(int):
+    OFF: ClassVar["StatusCode"]
+
     def __repr__(self) -> str:
         """Return a string representation of the status code."""
         return f"{self.__class__.__name__}({int(self)})"
@@ -618,6 +620,9 @@ class StatusCode(int):
             return StatusCodeCategory.START_UP
         # 0 or negative
         return StatusCodeCategory.OFF
+
+
+StatusCode.OFF = StatusCode(0)
 
 
 class OperationMode(enum.IntEnum):

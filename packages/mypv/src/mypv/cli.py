@@ -30,6 +30,7 @@ class ReadArgs(Args):
 
     netloc: str
     device_id: int
+    dump_registers: bool
 
 
 def _print_kv(key: str, value: Any, *, indent: str = "") -> None:  # noqa: ANN401
@@ -63,6 +64,9 @@ async def read(args: ReadArgs) -> None:
         port=port,
         device_id=args.device_id,
     )
+    if args.dump_registers:
+        print(f"Raw register values: {acthor.registers[:]}")
+
     registers = acthor.registers.to_dict()
     for key, value in registers.items():
         _print_kv(key, value)
@@ -127,6 +131,11 @@ def main() -> None:
         type=int,
         default=1,
         help="Device ID of the myPV device (default: 1).",
+    )
+    parser_read.add_argument(
+        "--dump-registers",
+        action="store_true",
+        help="Dump all registers to the console.",
     )
 
     parser_discover = subparsers.add_parser(
