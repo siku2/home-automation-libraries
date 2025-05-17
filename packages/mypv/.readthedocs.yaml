@@ -7,7 +7,7 @@ formats:
 python:
   install:
   - method: pip
-    path: .
+    path: packages/mypv
     extra_requirements:
     - docs
 
