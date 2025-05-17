@@ -56,6 +56,38 @@ _DEVICE_NAMES = {
 }
 
 
+class DeviceType(enum.StrEnum):
+    """my-PV device type."""
+
+    ACTHOR_9S = "200300"
+    ACTHOR = "200100"
+    ACTHOR_I = "200103"
+    ACTHOR_CH = "200101"
+    AC_ELWA_2 = "160150"
+    AC_ELWA_2_FOR_AC_ELWA_2 = "160151"
+    """Electronic unit without heating element for AC ELWA 2."""
+    AC_ELWA_2_FOR_AC_ELWA_E = "160152"
+    """Electronic unit without heating element for AC ELWA-E."""
+    AC_ELWA_E = "160124"
+    AC_ELWA_E_CH = "160140"
+    AC_ELWA_E_ECU = "160129"
+    """Electronic unit without heating element."""
+    AC_ELWA_E_CH_ECU = "160142"
+    """Electronic unit without heating element (Switzerland)."""
+    SOL_THOR = "140100"
+
+    @classmethod
+    def from_serial_number(cls, sn: str) -> Self:
+        """Determine the device type from the serial number.
+
+        This is not recommended by my-PV, but they don't provide a better alternative either.
+
+        Raises:
+            ValueError: If the serial number is unknown.
+        """
+        return cls(sn[:6])
+
+
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class DiscoveryRequest:
     """Discovery request.
@@ -121,10 +153,18 @@ class DiscoveryReply:
     device_id: DeviceIdentification
     addr: IPv4Address
     serial_number: str
-    firmware_version: str
+    firmware_version: int
     elwa_number: int
 
     LENGTH: ClassVar[int] = 64
+
+    @property
+    def device_type(self) -> DeviceType | None:
+        """Device type."""
+        try:
+            return DeviceType.from_serial_number(self.serial_number)
+        except ValueError:
+            return None
 
     def encode(self) -> bytes:
         """Encode the discovery reply to bytes."""
@@ -132,7 +172,7 @@ class DiscoveryReply:
         buf[2:4] = self.device_id.value.to_bytes(2, "big")
         buf[4:8] = self.addr.packed
         buf[8:24] = self.serial_number.encode("ascii").ljust(16, b"\x00")
-        buf[24:26] = bytes.fromhex(self.firmware_version)
+        buf[24:26] = self.firmware_version.to_bytes(2, "big")
         buf[26] = self.elwa_number
         crc = _crc16(buf[2:])
         buf[0:2] = crc.to_bytes(2, "little")
@@ -158,7 +198,7 @@ class DiscoveryReply:
         dev_id = int.from_bytes(data[2:4], "big")
         ip = IPv4Address(data[4:8])
         serial_number = data[8:24].decode("ascii").rstrip("\x00")
-        firmware_version = data[24:26].hex()
+        firmware_version = int.from_bytes(data[24:26], "big")
         elwa_number = data[26]
         return cls(
             device_id=DeviceIdentification(dev_id),
@@ -188,7 +228,7 @@ class _Protocol(asyncio.DatagramProtocol):
         self, interface: IPv4Interface | IPv6Interface, callback: DiscoveryCallback
     ) -> None:
         self._interface = interface
-        self._callback = callback
+        self._callback: DiscoveryCallback | None = callback
 
     def connection_made(self, transport: asyncio.DatagramTransport) -> None:
         req = DiscoveryRequest(
@@ -201,8 +241,9 @@ class _Protocol(asyncio.DatagramProtocol):
     def connection_lost(self, exc: Exception | None) -> None:
         if exc is not None:
             _LOGGER.debug("Connection lost: %s", exc)
-        # TODO: do we need to ensure this is never called twice?
-        self._callback(None)
+        if cb := self._callback:
+            cb(None)
+            self._callback = None
 
     def datagram_received(self, data: bytes, addr: tuple[str | Any, int]) -> None:
         if len(data) == DiscoveryRequest.LENGTH:
@@ -220,11 +261,14 @@ class _Protocol(asyncio.DatagramProtocol):
             )
             return
 
-        self._callback(reply)
+        if cb := self._callback:
+            cb(reply)
 
     def error_received(self, exc: Exception) -> None:
         _LOGGER.debug("Error received: %s", exc)
-        self._callback(None)
+        if cb := self._callback:
+            cb(None)
+            self._callback = None
 
 
 @asynccontextmanager

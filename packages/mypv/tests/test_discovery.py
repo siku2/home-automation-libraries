@@ -35,3 +35,8 @@ def test_codec(message: DiscoveryReply | DiscoveryRequest, expected: bytes | str
     assert encoded.hex() == expected.hex()
     decoded = message_cls.decode(encoded)
     assert decoded == message
+
+
+@pytest.mark.asyncio
+async def test_discovery() -> None:
+    pass

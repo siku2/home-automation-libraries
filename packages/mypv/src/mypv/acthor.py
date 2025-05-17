@@ -1,1 +1,0 @@
-"""AC-THOR device."""
