@@ -11,6 +11,10 @@ jobs:
   meta:
     name: "Determine metadata"
     runs-on: ubuntu-24.04
+
+    permissions:
+      contents: read
+
     outputs:
       package: ${{ steps.meta.outputs.package }}
       version: ${{ steps.meta.outputs.version }}
