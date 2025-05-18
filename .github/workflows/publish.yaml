@@ -17,6 +17,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - uses: astral-sh/setup-uv@v3
 
     - id: meta
       run: |
@@ -32,7 +33,7 @@ jobs:
         fi
 
         # Assert that version matches uv version --short
-        uv_version=$(uv --directory "packages/$package" version --short 2>/dev/null) || exit
+        uv_version=$(uv --directory "packages/$package" version --short) || exit
         if [ "$uv_version" != "$version" ]; then
           echo >&2 "Tag version $version does not match project version $uv_version" 
           exit 1
