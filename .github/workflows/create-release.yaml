@@ -90,6 +90,7 @@ jobs:
       uses: EndBug/add-and-commit@a94899bca583c204427a224a7af87c02f9b325d5 # v9
       with:
         add: packages/${{ inputs.package }}/pyproject.toml
+        message: "chore(release): release ${{ steps.version.outputs.tag_name }} [skip ci]"
         push: true
 
     - if: ${{ ! inputs.dry_run }}
