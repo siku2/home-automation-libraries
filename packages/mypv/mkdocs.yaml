@@ -1,6 +1,6 @@
 # See: <https://www.mkdocs.org/user-guide/configuration/>
 
-site_name: MyPV
+site_name: my-PV
 site_url: !ENV READTHEDOCS_CANONICAL_URL
 
 repo_url: !ENV READTHEDOCS_GIT_CLONE_URL

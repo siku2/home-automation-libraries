@@ -13,7 +13,7 @@ from collections.abc import Callable, Coroutine
 from typing import Any, Protocol, cast
 
 import mypv.discovery
-from mypv.acthor import Acthor
+from mypv.acthor import ActhorModbusClient
 
 _VERSION = importlib.metadata.version("mypv")
 
@@ -31,6 +31,27 @@ class ReadArgs(Args):
     netloc: str
     device_id: int
     dump_registers: bool
+
+    @classmethod
+    def add_args(cls, parser: argparse.ArgumentParser) -> None:
+        """Add arguments to the parser."""
+        parser.set_defaults(func=read)
+        parser.add_argument(
+            "netloc",
+            type=str,
+            help="Host name or IP address of the myPV device. May include a port number.",
+        )
+        parser.add_argument(
+            "--device-id",
+            type=int,
+            default=1,
+            help="Device ID of the myPV device (default: 1).",
+        )
+        parser.add_argument(
+            "--dump-registers",
+            action="store_true",
+            help="Dump all registers to the console.",
+        )
 
 
 def _print_kv(key: str, value: Any, *, indent: str = "") -> None:  # noqa: ANN401
@@ -59,7 +80,7 @@ async def read(args: ReadArgs) -> None:
         msg = f"Invalid port number: {port}"
         raise ValueError(msg) from None
 
-    acthor = await Acthor.connect(
+    acthor = await ActhorModbusClient.connect(
         host=host,
         port=port,
         device_id=args.device_id,
@@ -77,6 +98,23 @@ class DiscoverArgs(Args):
 
     interface: str
     duration: float
+
+    @classmethod
+    def add_args(cls, parser: argparse.ArgumentParser) -> None:
+        """Add arguments to the parser."""
+        parser.set_defaults(func=discover)
+        parser.add_argument(
+            "--interface",
+            type=str,
+            default="0.0.0.0/0",
+            help="Network interface to use for discovery.",
+        )
+        parser.add_argument(
+            "--duration",
+            type=float,
+            default=1.0,
+            help="Duration for discovery in seconds (default: 1.0).",
+        )
 
 
 async def discover(args: DiscoverArgs) -> None:
@@ -115,45 +153,17 @@ def main() -> None:
         description="Available subcommands",
         required=True,
     )
-
-    parser_read = subparsers.add_parser(
-        "read",
-        help="Read registers from the myPV device.",
+    ReadArgs.add_args(
+        subparsers.add_parser(
+            "read",
+            help="Read registers from the myPV device.",
+        )
     )
-    parser_read.set_defaults(func=read)
-    parser_read.add_argument(
-        "netloc",
-        type=str,
-        help="Host name or IP address of the myPV device. May include a port number.",
-    )
-    parser_read.add_argument(
-        "--device-id",
-        type=int,
-        default=1,
-        help="Device ID of the myPV device (default: 1).",
-    )
-    parser_read.add_argument(
-        "--dump-registers",
-        action="store_true",
-        help="Dump all registers to the console.",
-    )
-
-    parser_discover = subparsers.add_parser(
-        "discover",
-        help="Discover myPV devices on the network.",
-    )
-    parser_discover.set_defaults(func=discover)
-    parser_discover.add_argument(
-        "--interface",
-        type=str,
-        default="0.0.0.0/0",
-        help="Network interface to use for discovery.",
-    )
-    parser_discover.add_argument(
-        "--duration",
-        type=float,
-        default=1.0,
-        help="Duration for discovery in seconds (default: 1.0).",
+    DiscoverArgs.add_args(
+        subparsers.add_parser(
+            "discover",
+            help="Discover myPV devices on the network.",
+        )
     )
 
     args = cast("Args", parser.parse_args())

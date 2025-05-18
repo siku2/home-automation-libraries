@@ -58,7 +58,7 @@ jobs:
         codecov_test_args=(--junitxml=junit.xml -o junit_family=legacy)
         github_report_args=(--md=report.md --emoji)
 
-        uv run pytest "${codecov_coverage_args[@]}" "${codecov_test_args[@]}" "${github_report_args[@]}"
+        uv run pytest "${codecov_coverage_args[@]}" "${codecov_test_args[@]}" "${github_report_args[@]}" || exit
 
         echo "::group::..."
         final_report_file="$(mktemp)"

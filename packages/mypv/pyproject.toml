@@ -20,6 +20,9 @@ Issues = "https://github.com/siku2/home-automation-libraries/issues"
 [project.scripts]
 mypv = "mypv.cli:main"
 
+[project.optional-dependencies]
+http = ["httpx>=0.28.1"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -29,6 +32,7 @@ dev = [
     "pytest-asyncio>=0.26.0",
     "pytest-cov>=6.1.1",
     "pytest-emoji>=0.2.0",
+    "pytest-httpx>=0.35.0",
     "pytest-md>=0.2.0",
     "pytest>=8.3.5",
     "ruff>=0.11.9",
@@ -43,6 +47,8 @@ docs = [
 [tool.ruff]
 extend = "../../pyproject.toml"
 
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"
 
 [tool.coverage.report]
 # See: <https://github.com/nedbat/coveragepy/issues/831>

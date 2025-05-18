@@ -42,8 +42,8 @@ if TYPE_CHECKING:
 type Host = str | IPv4Address | IPv6Address
 
 
-class Acthor:
-    """AC-THOR device client.
+class ActhorModbusClient:
+    """AC-THOR modbus client.
 
     The underlying modbus client is not concurrent-safe, so neither is this class.
     In practice this means you shouldn't run multiple methods at the same time.
@@ -84,7 +84,9 @@ class Acthor:
 
     @classmethod
     async def from_modbus(
-        cls, client: "ModbusClientMixin[Awaitable[ModbusPDU]]", device_id: int = 1
+        cls,
+        client: "ModbusClientMixin[Awaitable[ModbusPDU]]",
+        device_id: int = 1,
     ) -> Self:
         """Connect to a device with an existing modbus client.
 

@@ -1,6 +1,6 @@
-"""AC-THOR device."""
+"""AC-THOR device clients."""
 
-from ._acthor import Acthor, Host
+from ._acthor import ActhorModbusClient, Host
 from ._features import DeviceFeatures
 from ._registers import (
     BoostMode,
@@ -19,7 +19,7 @@ from ._registers import (
 )
 
 __all__ = [
-    "Acthor",
+    "ActhorModbusClient",
     "BoostMode",
     "ControlFirmwareVersion",
     "ControlType",

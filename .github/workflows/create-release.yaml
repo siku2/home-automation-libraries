@@ -1,0 +1,52 @@
+# See: <https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions>
+
+name: Create release
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: "Package"
+        required: true
+        type: choice
+        options:
+        - mypv
+
+      version_bump:
+        description: "Version to bump"
+        required: true
+        type: choice
+        options:
+        - major
+        - minor
+        - patch
+
+jobs:
+  release:
+    name: "Release"
+    runs-on: ubuntu-24.04
+
+    defaults:
+      run:
+        working-directory: "packages/${{ inputs.package }}"
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: astral-sh/setup-uv@v3
+
+    - name: Bump version
+      id: version
+      run: |
+        uv version --bump '${{ inputs.version_bump }}' || exit
+        version=$(uv version --short) || exit
+        {
+          echo "version=$version"
+        } | tee -a "$GITHUB_OUTPUT"
+
+    - name: Create release
+      uses: softprops/action-gh-release@v2
+      with:
+        draft: true
+        tag_name: "${{ inputs.package }}-${{ steps.version.outputs.version }}"
+        target_commitish: ${{ github.sha }}
+        generate_release_notes: true
