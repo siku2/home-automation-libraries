@@ -50,8 +50,21 @@ jobs:
         args: "format --check --diff"
 
     - name: "Run tests"
-      uses: pavelzw/pytest-action@v2
-      with:
-        custom-pytest: uv --directory "packages/${{ matrix.package }}" run pytest
-        report-title: "`${{matrix.package}}` Test Report"
+      run: |
+        uv run pytest --md=report.md --emoji
 
+        echo "::group::..."
+        final_report_file="$(mktemp)"
+        {
+          echo "# ${{matrix.package}}` Test Report"
+          echo "<details><summary>Click to expand!</summary>"
+          tail -n+2 report.md
+          echo "</details>"
+        } >>"$final_report_file"
+
+        cat "$final_report_file" >>"$GITHUB_STEP_SUMMARY"
+        echo "::endgroup::"
+        echo
+        echo "====================================================================================="
+        echo Markdown summaries: "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+        echo "====================================================================================="
