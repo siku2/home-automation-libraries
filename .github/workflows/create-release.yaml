@@ -83,11 +83,13 @@ jobs:
       run: |
         cat "${{ github.workspace }}/${{ steps.changelog.outputs.changelog }}"
 
+    # TODO: Find a way to create signed commits.
     - if: ${{ ! inputs.dry_run }}
       name: Commit version
       id: commit
       uses: EndBug/add-and-commit@a94899bca583c204427a224a7af87c02f9b325d5 # v9
       with:
+        add: packages/${{ inputs.package }}/pyproject.toml
         push: true
 
     - if: ${{ ! inputs.dry_run }}

@@ -12,6 +12,7 @@
                 "astral-sh.ty",
                 "charliermarsh.ruff",
                 "DavidAnson.vscode-markdownlint",
+                "eamodio.gitlens",
                 "foxundermoon.shell-format",
                 "github.vscode-github-actions",
                 "kennylong.kubernetes-yaml-formatter",
