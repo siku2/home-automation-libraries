@@ -26,7 +26,7 @@ on:
         description: "Dry run"
         required: false
         type: boolean
-        default: false
+        default: true
 
 jobs:
   release:
@@ -69,6 +69,11 @@ jobs:
           --include-path 'packages/${{ inputs.package }}/**/*' \
           --tag "${{ steps.version.outputs.tag_name }}" \
           "${{ steps.version.outputs.old_tag_name }}.."
+
+    - if: ${{ inputs.dry_run }}
+      name: Print changelog
+      run: |
+        cat "${{ steps.changelog.outputs.changelog }}"
 
     - if: ${{ ! inputs.dry_run }}
       name: Commit version
