@@ -63,9 +63,9 @@ jobs:
       id: changelog
       uses: orhun/git-cliff-action@4a4a951bc43fafe41cd2348d181853f52356bee7 # v4
       with:
+        config: github
         args: |
           --verbose \
-          --config github \
           --include-path 'packages/${{ inputs.package }}/**/*' \
           --tag "${{ steps.version.outputs.tag_name }}" \
           "${{ steps.version.outputs.old_tag_name }}.."
