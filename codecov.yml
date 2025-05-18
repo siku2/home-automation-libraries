@@ -1,9 +1,8 @@
 # See: <https://docs.codecov.com/docs/codecovyml-reference>
 
 coverage:
-	status:
-		project: true
-
+  status:
+    project: true
 
 component_management:
   default_rules:
@@ -15,4 +14,4 @@ component_management:
   - component_id: mypv
     name: "my-PV"
     paths:
-    - packages/mypv/**
+    - "packages/mypv/**"
