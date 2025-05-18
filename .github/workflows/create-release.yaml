@@ -26,6 +26,9 @@ jobs:
     name: "Release"
     runs-on: ubuntu-24.04
 
+    permissions:
+      contents: write
+
     defaults:
       run:
         working-directory: "packages/${{ inputs.package }}"
