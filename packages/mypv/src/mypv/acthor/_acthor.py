@@ -42,7 +42,7 @@ if TYPE_CHECKING:
 type Host = str | IPv4Address | IPv6Address
 
 
-class ActhorModbusClient:
+class ActhorModbus:
     """AC-THOR modbus client.
 
     The underlying modbus client is not concurrent-safe, so neither is this class.

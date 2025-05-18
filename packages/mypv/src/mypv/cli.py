@@ -13,7 +13,7 @@ from collections.abc import Callable, Coroutine
 from typing import Any, Protocol, cast
 
 import mypv.discovery
-from mypv.acthor import ActhorModbusClient
+from mypv.acthor import ActhorModbus
 
 _VERSION = importlib.metadata.version("mypv")
 
@@ -80,7 +80,7 @@ async def read(args: ReadArgs) -> None:
         msg = f"Invalid port number: {port}"
         raise ValueError(msg) from None
 
-    acthor = await ActhorModbusClient.connect(
+    acthor = await ActhorModbus.connect(
         host=host,
         port=port,
         device_id=args.device_id,

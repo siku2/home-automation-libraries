@@ -1,7 +1,8 @@
 """AC-THOR device clients."""
 
-from ._acthor import ActhorModbusClient, Host
+from ._acthor import ActhorModbus, Host
 from ._features import DeviceFeatures
+from ._http import ActhorHttpClient
 from ._registers import (
     BoostMode,
     ControlFirmwareVersion,
@@ -19,7 +20,8 @@ from ._registers import (
 )
 
 __all__ = [
-    "ActhorModbusClient",
+    "ActhorHttpClient",
+    "ActhorModbus",
     "BoostMode",
     "ControlFirmwareVersion",
     "ControlType",

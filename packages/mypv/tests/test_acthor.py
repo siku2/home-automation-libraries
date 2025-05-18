@@ -7,7 +7,7 @@ from pymodbus.client.mixin import ModbusClientMixin
 from pymodbus.pdu import ModbusPDU
 
 from mypv.acthor import (
-    ActhorModbusClient,
+    ActhorModbus,
     BoostMode,
     ControlFirmwareVersion,
     ControlType,
@@ -49,7 +49,7 @@ class MockModbusClient(ModbusClientMixin[Awaitable[ModbusPDU]]):
 @pytest.mark.asyncio
 async def test_registers() -> None:
     client = MockModbusClient("registers-1")
-    acthor = await ActhorModbusClient.from_modbus(client)
+    acthor = await ActhorModbus.from_modbus(client)
 
     r = acthor.registers
     assert r.power == 0

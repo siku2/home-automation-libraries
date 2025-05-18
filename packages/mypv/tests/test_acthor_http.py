@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from pytest_httpx import HTTPXMock
 
-from mypv.acthor._http import ActhorHttpClient
+from mypv.acthor import ActhorHttpClient
 
 _DATA_DIR = Path(__file__).parent / "data"
 
@@ -22,3 +22,4 @@ async def test_setup_xml(httpx_mock: HTTPXMock) -> None:
     setup = await client.get_setup()
     assert setup.mac_address == "98:6D:35:00:00:00"
     assert setup.ip_address == IPv4Address("10.0.1.1")
+    assert setup.serial_number == "2001011910000000"
