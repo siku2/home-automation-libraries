@@ -73,7 +73,7 @@ jobs:
     - if: ${{ inputs.dry_run }}
       name: Print changelog
       run: |
-        cat "${{ steps.changelog.outputs.changelog }}"
+        cat "${{ github.workspace }}/${{ steps.changelog.outputs.changelog }}"
 
     - if: ${{ ! inputs.dry_run }}
       name: Commit version
@@ -86,7 +86,7 @@ jobs:
       name: Create release
       uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631 # v2
       with:
-        body_path: ${{ steps.changelog.outputs.changelog }}
+        body_path: "${{ github.workspace }}/${{ steps.changelog.outputs.changelog }}"
         draft: true
         tag_name: "${{ steps.version.outputs.tag_name }}"
         target_commitish: ${{ steps.commit.outputs.commit_long_sha }}
