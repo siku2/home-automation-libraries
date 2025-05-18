@@ -4,6 +4,14 @@ SHELL ["/bin/bash", "-c"]
 
 RUN <<EOF
 set -euo pipefail
-pipx install typos
-pipx install uv
+
+PIPX_DEPS=(
+    git-cliff
+    typos
+    uv
+)
+
+for dep in "${PIPX_DEPS[@]}"; do
+    pipx install "$dep"
+done
 EOF

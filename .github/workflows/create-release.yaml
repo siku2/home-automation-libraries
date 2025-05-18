@@ -16,10 +16,17 @@ on:
         description: "Version to bump"
         required: true
         type: choice
+        default: "minor"
         options:
-        - major
-        - minor
         - patch
+        - minor
+        - major
+
+      dry_run:
+        description: "Dry run"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   release:
@@ -35,27 +42,46 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
     - uses: astral-sh/setup-uv@v3
 
     - name: Bump version
       id: version
       run: |
+        old_version=$(uv version --short) || exit
         uv version --bump '${{ inputs.version_bump }}' || exit
         version=$(uv version --short) || exit
         {
+          echo "old_version=$old_version"
           echo "version=$version"
+          echo "old_tag_name=${{ inputs.package }}-$old_version"
+          echo "tag_name=${{ inputs.package }}-$version"
         } | tee -a "$GITHUB_OUTPUT"
 
-    - name: Commit version
+    - name: Generate a changelog
+      id: changelog
+      uses: orhun/git-cliff-action@v3
+      with:
+        args: |
+          --verbose \
+          --config github \
+          --include-path 'packages/${{ inputs.package }}/**/*' \
+          --tag "${{ steps.version.outputs.tag_name }}" \
+          "${{ steps.version.outputs.old_tag_name }}.."
+
+    - if: ${{ ! inputs.dry_run }}
+      name: Commit version
       id: commit
       uses: EndBug/add-and-commit@v9
       with:
         push: true
 
-    - name: Create release
+    - if: ${{ ! inputs.dry_run }}
+      name: Create release
       uses: softprops/action-gh-release@v2
       with:
+        body_path: ${{ steps.changelog.outputs.changelog }}
         draft: true
-        tag_name: "${{ inputs.package }}-${{ steps.version.outputs.version }}"
+        tag_name: "${{ steps.version.outputs.tag_name }}"
         target_commitish: ${{ steps.commit.outputs.commit_long_sha }}
-        generate_release_notes: true
