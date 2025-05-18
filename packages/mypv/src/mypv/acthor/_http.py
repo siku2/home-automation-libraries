@@ -2,11 +2,12 @@ import dataclasses
 import ipaddress
 import xml.etree.ElementTree as ET
 from types import TracebackType
-from typing import Any, Self
-
-import httpx
+from typing import TYPE_CHECKING, Any, Self
 
 from ._acthor import Host
+
+if TYPE_CHECKING:
+    from httpx import URL
 
 
 class ActhorHttpClient:
@@ -16,7 +17,16 @@ class ActhorHttpClient:
     the JSON interface.
     """
 
-    def __init__(self, base_url: httpx.URL | str) -> None:
+    def __init__(self, base_url: "URL | str") -> None:
+        try:
+            import httpx
+        except ImportError as err:
+            msg = (
+                f"{__package__} was installed without the 'http' extra "
+                "(Use `pip install '{__package__}[http]'`)."
+            )
+            raise RuntimeError(msg) from err
+
         self._client = httpx.AsyncClient(base_url=base_url)
 
     @classmethod
