@@ -41,9 +41,17 @@ jobs:
         working-directory: "packages/${{ inputs.package }}"
 
     steps:
+    - uses: actions/create-github-app-token@v2
+      id: app-token
+      with:
+        app-id: ${{ vars.RELEASE_APP_ID }}
+        private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
     - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
       with:
+        token: ${{ steps.app-token.outputs.token }}
         fetch-depth: 0
+
     - uses: astral-sh/setup-uv@6b9c6063abd6010835644d4c2e1bef4cf5cd0fca # v6
 
     - name: Bump version
