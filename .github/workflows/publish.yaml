@@ -5,11 +5,11 @@ name: Publish
 on:
   push:
     tags:
-
+      - "*-*"
 
 jobs:
   meta:
-    name: Determine metadata
+    name: "Determine metadata"
     runs-on: ubuntu-24.04
     outputs:
       package: ${{ steps.meta.outputs.package }}
@@ -46,7 +46,7 @@ jobs:
 
   pypi:
     needs: meta
-    name: Publish to PyPI
+    name: "Publish to PyPI"
     runs-on: ubuntu-24.04
     environment:
       name: release
@@ -56,7 +56,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: ./packages/${{ needs.meta.outputs.package }}
+        working-directory: "packages/${{ needs.meta.outputs.package }}"
 
     steps:
     - uses: actions/checkout@v4

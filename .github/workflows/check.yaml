@@ -1,6 +1,6 @@
 # See: <https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions>
 
-name: Check
+name: "Check"
 
 on:
   push:
@@ -13,16 +13,45 @@ on:
 
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  general:
+    name: "General checks"
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Check typos
+      uses: crate-ci/typos@v1.32.0
+
+  python-package:
+    name: "Python: ${{ matrix.package }}"
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         include:
         - package: mypv
 
+    defaults:
+      run:
+        working-directory: "packages/${{ matrix.package }}"
+
     steps:
     - uses: actions/checkout@v4
+    - uses: astral-sh/setup-uv@v3
 
-    - uses: astral-sh/ruff-action@v3
+    - name: "Lint"
+      uses: astral-sh/ruff-action@v3
       with:
-        src: packages/${{ matrix.package }}
+        src: "packages/${{ matrix.package }}"
+
+    - name: "Check formatting"
+      uses: astral-sh/ruff-action@v3
+      with:
+        src: "packages/${{ matrix.package }}"
+        args: "format --check --diff"
+
+    - name: "Run tests"
+      uses: pavelzw/pytest-action@v2
+      with:
+        custom-pytest: uv --directory "packages/${{ matrix.package }}" run pytest
+        report-title: "`${{matrix.package}}` Test Report"
+

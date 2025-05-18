@@ -13,9 +13,11 @@
                 "charliermarsh.ruff",
                 "DavidAnson.vscode-markdownlint",
                 "foxundermoon.shell-format",
+                "github.vscode-github-actions",
                 "kennylong.kubernetes-yaml-formatter",
                 "ms-python.python",
                 "tamasfe.even-better-toml",
+                "tekumara.typos-vscode",
                 "timonwong.shellcheck",
             ],
             "settings": {

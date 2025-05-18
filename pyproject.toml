@@ -69,3 +69,6 @@ ignore = ["COM812"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
+
+[tool.typos.default.extend-identifiers]
+IST = "IST" # timezone
