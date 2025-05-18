@@ -20,6 +20,7 @@ jobs:
     - uses: astral-sh/setup-uv@v3
 
     - id: meta
+      name: "Determine package and version"
       run: |
         # Extract tag name (refs/tags/<package>-<semver>)
         tag="${GITHUB_REF#refs/tags/}"

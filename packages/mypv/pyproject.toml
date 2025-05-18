@@ -1,12 +1,21 @@
 [project]
 name = "mypv"
 version = "0.1.0"
-description = "MYPV device communication library"
+description = "my-PV device communication library"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["mypv", "acthor"]
 authors = [{ name = "Simon Berger", email = "simon@siku2.io" }]
+maintainers = [{ name = "Simon Berger", email = "simon@siku2.io" }]
+
 requires-python = ">=3.13"
 dependencies = ["pymodbus>=3.9.2"]
 
+[project.urls]
+Documentation = "https://mypv.readthedocs.io"
+Repository = "https://github.com/siku2/home-automation-libraries.git"
+Issues = "https://github.com/siku2/home-automation-libraries/issues"
 
 [project.scripts]
 mypv = "mypv.cli:main"

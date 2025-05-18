@@ -1,4 +1,4 @@
-# my-PV device support
+# my-PV device communication library
 
 ## Supported devices
 

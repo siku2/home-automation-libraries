@@ -1,1 +1,1 @@
-# MyPV
+# my-PV device communication library
