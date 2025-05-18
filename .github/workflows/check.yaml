@@ -17,10 +17,10 @@ jobs:
     name: "General checks"
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
     - name: Check typos
-      uses: crate-ci/typos@v1.32.0
+      uses: crate-ci/typos@0f0ccba9ed1df83948f0c15026e4f5ccfce46109 # v1.32.0
 
     - name: Check for tabs
       run: |
@@ -47,16 +47,16 @@ jobs:
         working-directory: "packages/${{ matrix.package }}"
 
     steps:
-    - uses: actions/checkout@v4
-    - uses: astral-sh/setup-uv@v3
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+    - uses: astral-sh/setup-uv@caf0cab7a618c569241d31dcd442f54681755d39 # v3
 
     - name: "Lint"
-      uses: astral-sh/ruff-action@v3
+      uses: astral-sh/ruff-action@84f83ecf9e1e15d26b7984c7ec9cf73d39ffc946 # v3
       with:
         src: "packages/${{ matrix.package }}"
 
     - name: "Check formatting"
-      uses: astral-sh/ruff-action@v3
+      uses: astral-sh/ruff-action@84f83ecf9e1e15d26b7984c7ec9cf73d39ffc946 # v3
       with:
         src: "packages/${{ matrix.package }}"
         args: "format --check --diff"
@@ -87,7 +87,7 @@ jobs:
 
     - name: Upload coverage reports to Codecov
       if: ${{ !cancelled() }}
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5
       with:
         fail_ci_if_error: true
         flags: "${{ matrix.package }}"
@@ -95,7 +95,7 @@ jobs:
 
     - name: Upload test results to Codecov
       if: ${{ !cancelled() }}
-      uses: codecov/test-results-action@v1
+      uses: codecov/test-results-action@f2dba722c67b86c6caa034178c6e4d35335f6706 # v1
       with:
         fail_ci_if_error: true
         flags: "${{ matrix.package }}"
