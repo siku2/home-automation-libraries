@@ -61,7 +61,7 @@ jobs:
 
     - name: Generate a changelog
       id: changelog
-      uses: orhun/git-cliff-action@b946ed27a675d653b308f29a7bbad813b85bf7aa # v3
+      uses: orhun/git-cliff-action@4a4a951bc43fafe41cd2348d181853f52356bee7 # v4
       with:
         args: |
           --verbose \
