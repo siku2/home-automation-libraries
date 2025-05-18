@@ -41,10 +41,10 @@ jobs:
         working-directory: "packages/${{ inputs.package }}"
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
       with:
         fetch-depth: 0
-    - uses: astral-sh/setup-uv@v3
+    - uses: astral-sh/setup-uv@caf0cab7a618c569241d31dcd442f54681755d39 # v3
 
     - name: Bump version
       id: version
@@ -61,7 +61,7 @@ jobs:
 
     - name: Generate a changelog
       id: changelog
-      uses: orhun/git-cliff-action@v3
+      uses: orhun/git-cliff-action@b946ed27a675d653b308f29a7bbad813b85bf7aa # v3
       with:
         args: |
           --verbose \
@@ -78,13 +78,13 @@ jobs:
     - if: ${{ ! inputs.dry_run }}
       name: Commit version
       id: commit
-      uses: EndBug/add-and-commit@v9
+      uses: EndBug/add-and-commit@a94899bca583c204427a224a7af87c02f9b325d5 # v9
       with:
         push: true
 
     - if: ${{ ! inputs.dry_run }}
       name: Create release
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631 # v2
       with:
         body_path: ${{ steps.changelog.outputs.changelog }}
         draft: true

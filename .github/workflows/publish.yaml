@@ -16,8 +16,8 @@ jobs:
       version: ${{ steps.meta.outputs.version }}
 
     steps:
-    - uses: actions/checkout@v4
-    - uses: astral-sh/setup-uv@v3
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+    - uses: astral-sh/setup-uv@caf0cab7a618c569241d31dcd442f54681755d39 # v3
 
     - name: "Determine package and version"
       id: meta
@@ -61,8 +61,8 @@ jobs:
         working-directory: "packages/${{ needs.meta.outputs.package }}"
 
     steps:
-    - uses: actions/checkout@v4
-    - uses: astral-sh/setup-uv@v3
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+    - uses: astral-sh/setup-uv@caf0cab7a618c569241d31dcd442f54681755d39 # v3
 
     - run: uv build
 
