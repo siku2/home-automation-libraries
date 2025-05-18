@@ -69,10 +69,8 @@ async def test_registers() -> None:
     assert r.status == StatusCode.OFF
     assert r.power_timeout.total_seconds() == 90
     assert r.boost_mode == BoostMode.ON
-    assert r.boost_time_1_start == 0
-    assert r.boost_time_1_stop == 0
-    assert r.boost_time_2_start == 0
-    assert r.boost_time_2_stop == 0
+    assert r.boost_time_1 == (0, 0)
+    assert r.boost_time_2 == (0, 0)
     assert r.boost_active is False
     assert str(r.time) == "00:06:22+01:00"
     assert r.night is True

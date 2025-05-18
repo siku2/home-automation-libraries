@@ -215,7 +215,7 @@ class DiscoveryReply:
 
 def _crc16(data: bytes) -> int:
     """Calculate the CRC16 checksum of the given data."""
-    # We re-use pymodbus' implemtation so we don't have to maintain our own.
+    # We re-use pymodbus' implementation so we don't have to maintain our own.
     # It's explicitly stated that mypv uses the Modbus CRC.
     return FramerRTU.compute_CRC(data)
 

@@ -10,7 +10,24 @@ if TYPE_CHECKING:
 
 REG_CONTROL_FW_VERSION = 1016
 REG_CONTROL_FW_SUB_VERSION = 1028
-REG_SERIAL_NUMBER_RANGE = slice(1018, 1025 + 1)
+REG_SERIAL_NUMBER_RANGE = (1018, 1025 + 1)
+"""Range of registers [start, stop) for the serial number.
+
+This is a half-open range, so the stop value is not included.
+"""
+REG_POWER = 1000
+REG_POWER_32_HIGH = 1078
+REG_POWER_TIMEOUT = 1004
+REG_BOOST_TIME_1_START = 1007
+REG_BOOST_TIME_2_START = 1026
+REG_BOOST_MODE = 1005
+REG_BOOST_ACTIVATE = 1012
+REG_MAX_POWER = 1014
+REG_DEVICE_NUMBER = 1013
+REG_LEGIONELLA_INTERVAL = 1053
+REG_OPERATION_MODE = 1065
+REG_CONTROL_TYPE = 1070
+REG_DEVICE_STATE = 1081
 
 REG_HOT_WATER_MAP = {
     # unit -> (min_temp, max_temp)
@@ -19,8 +36,12 @@ REG_HOT_WATER_MAP = {
     3: (1040, 1038),
 }
 
-REG_POWER = 1000
-REG_POWER_32_HIGH = 1078
+REG_ROOM_HEATING_MAP = {
+    # unit -> (max_temp, min_temp_day, min_temp_night)
+    1: (1041, 1044, 1047),
+    2: (1042, 1045, 1048),
+    3: (1043, 1046, 1049),
+}
 
 
 class Registers:
@@ -35,11 +56,14 @@ class Registers:
         "_values",
     )
 
-    RANGE: "ClassVar[slice[int, int, None]]" = slice(1000, 1088 + 1)
-    """The range of registers that are available."""
+    RANGE: tuple[int, int] = (1000, 1088 + 1)
+    """The range of registers [start, stop) that are available.
+
+    This is a half-open range, so the stop value is not included.
+    """
 
     def __init__(self, features: "DeviceFeatures") -> None:
-        self._values = [0] * (self.RANGE.stop - self.RANGE.start)
+        self._values = [0] * (self.RANGE[1] - self.RANGE[0])
         self._features = features
 
     def has_register(self, register: property) -> bool:
@@ -95,29 +119,30 @@ class Registers:
         self, address: "int | slice[int | None, int | None, int | None]"
     ) -> int | list[int]:
         """Get the value of a register by its address."""
+        range_start, range_stop = self.RANGE
         if isinstance(address, slice):
             if address.start is None:
                 start = None
-            elif self.RANGE.start <= address.start < self.RANGE.stop:
-                start = address.start - self.RANGE.start
+            elif range_start <= address.start < range_stop:
+                start = address.start - range_start
             else:
                 msg = f"Register slice start {address.start} out of range."
                 raise IndexError(msg)
 
             if address.stop is None:
                 stop = None
-            elif self.RANGE.start <= address.stop:
-                stop = address.stop - self.RANGE.start
+            elif range_start <= address.stop:
+                stop = address.stop - range_start
             else:
                 msg = f"Register slice stop {address.stop} out of range."
                 raise IndexError(msg)
 
             return self._values[start : stop : address.step]
 
-        if not (self.RANGE.start <= address < self.RANGE.stop):
+        if not (range_start <= address < range_stop):
             msg = f"Register {address} out of range."
             raise IndexError(msg)
-        return self._values[address - self.RANGE.start]
+        return self._values[address - range_start]
 
     def set_values(self, values: list[int]) -> None:
         """Update the register values."""
@@ -241,27 +266,27 @@ class Registers:
         return self._values[40] / 10, self._values[38] / 10
 
     @property
-    def room_heating_1(self) -> "RoomHeating":
+    def room_heating_1(self) -> "RoomHeatingSettings":
         """Room heating 1 settings."""
-        return RoomHeating(
+        return RoomHeatingSettings(
             max_temp=self._values[41] / 10,
             min_temp_day=self._values[44] / 10,
             min_temp_night=self._values[47] / 10,
         )
 
     @property
-    def room_heating_2(self) -> "RoomHeating":
+    def room_heating_2(self) -> "RoomHeatingSettings":
         """Room heating 2 settings."""
-        return RoomHeating(
+        return RoomHeatingSettings(
             max_temp=self._values[42] / 10,
             min_temp_day=self._values[45] / 10,
             min_temp_night=self._values[48] / 10,
         )
 
     @property
-    def room_heating_3(self) -> "RoomHeating":
+    def room_heating_3(self) -> "RoomHeatingSettings":
         """Room heating 3 settings."""
-        return RoomHeating(
+        return RoomHeatingSettings(
             max_temp=self._values[43] / 10,
             min_temp_day=self._values[46] / 10,
             min_temp_night=self._values[49] / 10,
@@ -283,24 +308,14 @@ class Registers:
         return BoostMode(self._values[5])
 
     @property
-    def boost_time_1_start(self) -> int:
-        """Boost time 1 start hour (0-23)."""
-        return self._values[7]
+    def boost_time_1(self) -> tuple[int, int]:
+        """Boost time 1 start, stop hours (0-23, 0-24)."""
+        return self._values[7], self._values[8]
 
     @property
-    def boost_time_1_stop(self) -> int:
-        """Boost time 1 stop hour (0-24)."""
-        return self._values[8]
-
-    @property
-    def boost_time_2_start(self) -> int:
-        """Boost time 2 start hour (0-23)."""
-        return self._values[26]
-
-    @property
-    def boost_time_2_stop(self) -> int:
-        """Boost time 2 stop hour (0-24)."""
-        return self._values[27]
+    def boost_time_2(self) -> tuple[int, int]:
+        """Boost time 2 start, stop hours (0-23, 0-24)."""
+        return self._values[26], self._values[27]
 
     @property
     def boost_active(self) -> bool:
@@ -364,7 +379,7 @@ class Registers:
         return LegionellaSettings(
             interval_days=self._values[53],
             start_hour=self._values[54],
-            temperature=float(self._values[55]),
+            temperature=self._values[55],
             enabled=bool(self._values[56]),
         )
 
@@ -487,7 +502,7 @@ class Registers:
     def device_state(self) -> bool:
         """Device state.
 
-        Not available on a00101xx firmware.
+        Not available on `a00101xx` firmware.
         """
         return bool(self._values[81])
 
@@ -516,7 +531,7 @@ _REGISTER_CHECKS: "dict[property, Callable[[DeviceFeatures], bool]]" = {
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True)
-class RoomHeating:
+class RoomHeatingSettings:
     """Room heating settings."""
 
     max_temp: float
@@ -537,7 +552,7 @@ class LegionellaSettings:
 
     enabled: bool
     """Whether legionella mode is enabled."""
-    temperature: float
+    temperature: int
     """Legionella temperature in °C.
 
     Unlike most temperatures, the resolution here is only 1 °C.
@@ -636,7 +651,7 @@ class OperationMode(enum.IntEnum):
     FREQUENCY_MODE = 8
 
 
-class PowerStageOuput(enum.IntEnum):
+class PowerStageOutput(enum.IntEnum):
     OFF = 0
     OUT_1 = 1
     OUT_2 = 2
@@ -674,10 +689,10 @@ class PowerStage(int):
         return bool(self & (1 << 15))
 
     @property
-    def output(self) -> PowerStageOuput:
+    def output(self) -> PowerStageOutput:
         """Power stage output."""
         # bits 13 and 12
-        return PowerStageOuput((self & (0b11 << 12)) >> 12)
+        return PowerStageOutput((self & (0b11 << 12)) >> 12)
 
     @property
     def power(self) -> int:

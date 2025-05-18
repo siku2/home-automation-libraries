@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from pymodbus.client.mixin import ModbusClientMixin
     from pymodbus.pdu import ModbusPDU
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER = logging.getLogger(__package__)
 
 
 @dataclasses.dataclass(kw_only=True, frozen=True)
@@ -56,12 +56,17 @@ class DeviceFeatures:
     """Whether the `Registers.pwm_out` register is available."""
     has_meter_power_32: bool
     """Whether the `Registers.meter_power_32` registers are available."""
+    max_power_range: tuple[int, int]
+    """Tuple of [min, max] for the max power (W) setting.
+
+    Both values are inclusive.
+    """
 
     @classmethod
     def all(cls) -> Self:
         """All features enabled."""
         return cls(
-            readable_registers=Registers.RANGE.stop - Registers.RANGE.start,
+            readable_registers=Registers.RANGE[1] - Registers.RANGE[0],
             temperature_sensors=8,
             water_heating_units=3,
             has_load_state_outputs=True,
@@ -72,6 +77,7 @@ class DeviceFeatures:
             has_device_powers=True,
             has_pwm_out=True,
             has_meter_power_32=True,
+            max_power_range=_MAX_POWER_9S,
         )
 
     @classmethod
@@ -86,8 +92,8 @@ class DeviceFeatures:
             count=(REG_CONTROL_FW_SUB_VERSION - REG_CONTROL_FW_VERSION + 1),
             slave=device_id,
         )
-        sn_start = REG_SERIAL_NUMBER_RANGE.start - REG_CONTROL_FW_VERSION
-        sn_end = REG_SERIAL_NUMBER_RANGE.stop - REG_CONTROL_FW_VERSION
+        sn_start = REG_SERIAL_NUMBER_RANGE[0] - REG_CONTROL_FW_VERSION
+        sn_end = REG_SERIAL_NUMBER_RANGE[1] - REG_CONTROL_FW_VERSION
         serial_number = b"".join(
             reg.to_bytes(2, "big") for reg in pdu.registers[sn_start:sn_end]
         ).decode("ascii")
@@ -111,7 +117,7 @@ class DeviceFeatures:
 
     @classmethod
     def _build(cls, *, fw_version: ControlFirmwareVersion, is_9s: bool) -> Self:
-        readable_registers = Registers.RANGE.stop - Registers.RANGE.start
+        readable_registers = Registers.RANGE[1] - Registers.RANGE[0]
         if fw_version.version == 101:  # noqa: PLR2004
             # The manual states 89 registers (1000-1088), but this doesn't match some devices.
             # My devices with FW a0010103 only support 81 registers (1000-1080).
@@ -131,4 +137,9 @@ class DeviceFeatures:
             has_device_powers=fw_version >= ControlFirmwareVersion(203, 3),
             has_pwm_out=fw_version >= ControlFirmwareVersion(205, 0),
             has_meter_power_32=fw_version >= ControlFirmwareVersion(210, 2),
+            max_power_range=_MAX_POWER_9S if is_9s else _MAX_POWER_NORMAL,
         )
+
+
+_MAX_POWER_NORMAL = (500, 3000)
+_MAX_POWER_9S = (1500, 9000)
