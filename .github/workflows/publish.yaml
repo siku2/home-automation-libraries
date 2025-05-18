@@ -1,0 +1,74 @@
+# See: <https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions>
+
+name: Publish
+
+on:
+  push:
+    tags:
+
+
+jobs:
+  meta:
+    name: Determine metadata
+    runs-on: ubuntu-24.04
+    outputs:
+      package: ${{ steps.meta.outputs.package }}
+      version: ${{ steps.meta.outputs.version }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - id: meta
+      run: |
+        # Extract tag name (refs/tags/<package>-<semver>)
+        tag="${GITHUB_REF#refs/tags/}"
+        package="${tag%-*}"
+        version="${tag##*-}"
+
+        # Assert that package exists
+        if [ ! -d "packages/$package" ]; then
+          echo >&2 "Package $package does not exist" 
+          exit 1
+        fi
+
+        # Assert that version matches uv version --short
+        uv_version=$(uv --directory "packages/$package" version --short 2>/dev/null) || exit
+        if [ "$uv_version" != "$version" ]; then
+          echo >&2 "Tag version $version does not match project version $uv_version" 
+          exit 1
+        fi
+
+        # Set outputs
+        {
+          echo "package=$package"
+          echo "version=$version"
+        } | tee -a "$GITHUB_OUTPUT"
+
+  pypi:
+    needs: meta
+    name: Publish to PyPI
+    runs-on: ubuntu-24.04
+    environment:
+      name: release
+
+    permissions:
+      id-token: write
+
+    defaults:
+      run:
+        working-directory: ./packages/${{ needs.meta.outputs.package }}
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: astral-sh/setup-uv@v3
+
+    - run: uv build
+
+    # Check that basic features work and we didn't miss to include crucial files
+    - name: Smoke test (wheel)
+      run: uv run --isolated --no-project --python 3.13 --with dist/*.whl tests/smoke_test.py
+
+    - name: Smoke test (source distribution)
+      run: uv run --isolated --no-project --python 3.13 --with dist/*.tar.gz tests/smoke_test.py
+
+    - run: uv publish --trusted-publishing always
