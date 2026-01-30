@@ -55,12 +55,12 @@ jobs:
     - uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb # v6
 
     - name: "Lint"
-      uses: astral-sh/ruff-action@eaf0ecdd668ceea36159ff9d91882c9795d89b49 # v3
+      uses: astral-sh/ruff-action@4919ec5cf1f49eff0871dbcea0da843445b837e6 # v3
       with:
         src: "packages/${{ matrix.package }}"
 
     - name: "Check formatting"
-      uses: astral-sh/ruff-action@eaf0ecdd668ceea36159ff9d91882c9795d89b49 # v3
+      uses: astral-sh/ruff-action@4919ec5cf1f49eff0871dbcea0da843445b837e6 # v3
       with:
         src: "packages/${{ matrix.package }}"
         args: "format --check --diff"
