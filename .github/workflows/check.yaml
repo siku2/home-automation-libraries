@@ -21,7 +21,7 @@ jobs:
       contents: read
 
     steps:
-    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
     - name: Check typos
       uses: crate-ci/typos@b1ae8d918b6e85bd611117d3d9a3be4f903ee5e4 # v1.33.1
@@ -51,7 +51,7 @@ jobs:
         working-directory: "packages/${{ matrix.package }}"
 
     steps:
-    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
     - uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb # v6
 
     - name: "Lint"
