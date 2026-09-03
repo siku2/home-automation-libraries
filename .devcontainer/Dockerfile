@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/devcontainers/python:3.13-bookworm@sha256:0f08c317b197f4036bca0514ef0fa52ce5cc9dc47056569c2263272f561aa8c1
+FROM mcr.microsoft.com/devcontainers/python:3.13-bookworm@sha256:5ba8adb657d39077e35620747b4798f2b88204a0237c19601eefb9d49f512270
 
 SHELL ["/bin/bash", "-c"]
 
